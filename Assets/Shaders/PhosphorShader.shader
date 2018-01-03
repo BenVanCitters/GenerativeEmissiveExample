@@ -1,8 +1,12 @@
 ﻿Shader "Custom/PhosphorShader" {
-Properties
+    Properties
     {
-        _Color ("Color", Color) = (1,1,1,1)
-                                _Tex("InputTex", 2D) = "white" {}
+        _Val ("Val", float) = 20.0
+        _Color_Time_Mult ("ColorTime",Vector) = (1.1,0.5,0.8)
+        _Color_U_Mult ("ColorU Mults",Vector) = (5,3,2)
+        _Color_V_Mult ("ColorV Mults",Vector) = (5,3,2)
+        _Color_Offset ("Color Offset",Vector) = (1,2,3)
+        _Time_mult ("TimeMult", Vector) =  (0,0,0) 
      }
 
      SubShader
@@ -16,30 +20,42 @@ Properties
             #include "UnityCustomRenderTexture.cginc"
             #pragma vertex CustomRenderTextureVertexShader
             #pragma fragment frag
-             #pragma target 3.0
+            #pragma target 3.0
 
-            
-            float4      _Color;
-            sampler2D   _Tex;
+            float _Val;
+            float2 _Time_mult;
 
-            static const float  PI = 3.14159;
+            float3 _Color_Time_Mult;
+            float3 _Color_U_Mult;
+            float3 _Color_V_Mult;
+            float3 _Color_Offset;
+            //float4 _MyVector;
+            static const float PI = 3.1415926535897932384626433832795028841971693;
+            static const float TWO_PI = 6.28318530718;
             float sinM(float t)
+            {
+                return (1.0f+sin(t))/2.0f;
+            }
+
+            float3 sinM(float3 t)
             {
                 return (1.0f+sin(t))/2.0f;
             }
 
             float4 frag(v2f_customrendertexture IN) : COLOR
             {
-                float t1 = _Time[1] + 5*IN.globalTexcoord.x*PI*2;
-                float t2 = 1+_Time[1] + 3*(IN.globalTexcoord.x+IN.globalTexcoord.y)*PI*2;
+                float3 t = _Color_Offset + _Time[1] * _Color_Time_Mult + 
+                           ( _Color_U_Mult * IN.globalTexcoord.x + _Color_V_Mult * IN.globalTexcoord.y ) * TWO_PI;
+                float offT1 = _Time[1] + (IN.globalTexcoord.x + IN.globalTexcoord.y) * 20;
+                float offT2 = 1.1*_Time[1] + (-3*IN.globalTexcoord.x + 2*IN.globalTexcoord.y) * 4 -10;
+                float xOff = 0.6 * cos(offT1) * cos(offT2);
+                float yOff = 0.6 * sin(offT1) * sin(offT2);
+                int bint = (_Time[1] + (IN.globalTexcoord.x + xOff) * _Val) % 2;
+                bint    *= (_Time[1] + (IN.globalTexcoord.y + yOff) * _Val) % 2;
 
-                float2 sinxy = .1*sin(20*IN.globalTexcoord + _Time[1]);
-                float2 cosxy = .1*cos(20*IN.globalTexcoord + _Time[1]);
-                int bint = (_Time[1] +(IN.globalTexcoord.x+cosxy[0])*20)%2;
-                bint *= (_Time[1] +(IN.globalTexcoord.y+sinxy[0])*20)%2;
-
-                float b = (IN.globalTexcoord.x*5)%1;
-                    return float4(sinM(t1)*bint,bint*sinM(t2),bint,0);
+                //float b = (IN.globalTexcoord.x*5)%1;
+                    float3 sint = sinM(t);
+                    return bint*float4(sint[0],sint[1],sint[2],0);
             }
             ENDCG
         }
